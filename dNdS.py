@@ -3,8 +3,6 @@ import argparse
 import json
 import itertools
 from Bio import SeqIO
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
 import re
 from collections import Counter
 
@@ -16,9 +14,9 @@ def site_counts(codon_table, outfile):
     site_counts_dict = {}
     for codon in keys:
         subs = single_substitutions(codon, alphabet)
-        synonymous_sites = sum([codon_dict[sub] == codon_dict[codon] for sub in subs])
-        nonsynonymous_sites = len(subs) - synonymous_sites
-        site_counts_dict[codon] = (nonsynonymous_sites, synonymous_sites)
+        NS = sum([codon_dict[sub] != codon_dict[codon] for sub in subs])
+        SS = len(subs) - NS
+        site_counts_dict[codon] = (NS, SS)
     with open(outfile, 'w') as outfile:
         json.dump(site_counts_dict, outfile, indent=4)
 
@@ -46,7 +44,7 @@ def sub_counts(codon_table, outfile):
     with open(outfile, 'w') as outfile:
         json.dump(sub_counts_dict, outfile, indent=4)
 
-def transpose(infile, prefix):
+def transpose(infile):
     msa = list(SeqIO.parse(infile, "fasta"))
     codons_by_seq = []
     for record in msa:
@@ -58,22 +56,13 @@ def transpose(infile, prefix):
         del count['---']
         sorted_counts = sorted(count.items(), key=lambda x: (-x[1], x[0]))
         transpose_dict[i] = sorted_counts
-    with open(f'{prefix}.json', 'w') as outfile:
-        json.dump(transpose_dict, outfile, indent=4)
+    return transpose_dict
 
-def consensus(infile, prefix):
-    with open(infile, 'r') as infile:
-        transpose_dict = json.load(infile)
-    consensus = Seq(''.join([val[0][0] for val in transpose_dict.values()]))
-    record = SeqRecord(consensus, id='prefix', description='')
-    SeqIO.write(record, f'{prefix}.cons', 'fasta')
+def consensus(transpose_dict):
+    return ''.join([val[0][0] for val in transpose_dict.values()])
 
 def per_sequence(infile, prefix, site_counts, sub_counts):
-    print(infile)
-    transpose(infile, prefix)
-    consensus(f'{prefix}.json', prefix)
-
-    reference = next(SeqIO.parse(f'{prefix}.cons', "fasta"))
+    reference = consensus(transpose(infile))
     variants = list(SeqIO.parse(infile, "fasta"))
 
     with open(site_counts, 'r') as infile:
@@ -82,7 +71,7 @@ def per_sequence(infile, prefix, site_counts, sub_counts):
     with open(sub_counts, 'r') as infile:
         sub_counts_dict = json.load(infile)
 
-    ref_codons = re.findall(r'...', str(reference.seq))
+    ref_codons = re.findall(r'...', reference)
     N = sum(site_counts_dict[codon][0] for codon in ref_codons)
     S = sum(site_counts_dict[codon][1] for codon in ref_codons)
 
@@ -102,25 +91,26 @@ def per_sequence(infile, prefix, site_counts, sub_counts):
                 print(variant.id, N, S, NS, SS, file=outfile, sep='\t')
 
 def per_site(infile, prefix, site_counts, sub_counts):
-    transpose(infile, prefix)
-
-    with open(f'{prefix}.json', 'r') as infile:
-        transpose_dict = json.load(infile)
+    transpose_dict = transpose(infile)
 
     with open(site_counts, 'r') as infile:
         site_counts_dict = json.load(infile)
 
     with open(sub_counts, 'r') as infile:
         sub_counts_dict = json.load(infile)
+
     with open(f'{prefix}.dNdS', 'w') as outfile:
         print('site', 'N', 'S', 'NS', 'SS', 'dNdS', file=outfile, sep='\t')
         for key, value in transpose_dict.items():
             ref_codon = value[0][0]
-            N = site_counts_dict[ref_codon][0]
-            S = site_counts_dict[ref_codon][1]
+            N = 0
+            S = 0
             NS = 0
             SS = 0
             for v in value:
+                print(site_counts_dict[ref_codon][0], site_counts_dict[ref_codon][1])
+                N += site_counts_dict[ref_codon][0]
+                S += site_counts_dict[ref_codon][1]
                 NS += sub_counts_dict[ref_codon][v[0]][0] * v[1]
                 SS += sub_counts_dict[ref_codon][v[0]][1] * v[1]
             if SS != 0:
@@ -144,11 +134,9 @@ def parse_args():
 
     transpose_parser = subparsers.add_parser('transpose')
     transpose_parser.add_argument('-i', '--infile')
-    transpose_parser.add_argument('-p', '--prefix')
 
     consensus_parser = subparsers.add_parser('consensus')
-    consensus_parser.add_argument('-i', '--infile')
-    consensus_parser.add_argument('-p', '--prefix')
+    consensus_parser.add_argument('-t', '--transpose')
 
     per_sequence_parser = subparsers.add_parser('per_sequence')
     per_sequence_parser.add_argument('-i', '--infile')
@@ -173,7 +161,7 @@ def main():
     elif args.command == 'transpose':
         transpose(args.infile, args.prefix)
     elif args.command == 'consensus':
-        consensus(args.infile, args.prefix)
+        consensus(args.transpose)
     elif args.command == 'per_sequence':
         per_sequence(args.infile, args.prefix, args.site_counts, args.sub_counts)
     elif args.command == 'per_site':
