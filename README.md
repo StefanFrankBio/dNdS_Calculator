@@ -8,8 +8,6 @@ The script can be run in different modes to:
 
 - Calculate site counts for non-synonymous and synonymous sites in codons.
 - Calculate substitution counts for non-synonymous and synonymous substitutions between codon pairs.
-- Transpose a multiple sequence alignment, creating a JSON file with counts of each codon per site.
-- Generate a consensus sequence from the transposed alignment.
 - Calculate dN/dS ratios per sequence in the alignment compared to the consensus sequence.
 - Calculate dN/dS ratios per site in the alignment.
 
@@ -24,16 +22,6 @@ Calculate the non-synonymous and synonymous site counts for each codon:
 Calculate the non-synonymous and synonymous substitution counts for each pair of codons:
 ```bash
 ./dNdS_calculator.py sub_counts -c CODON_TABLE -o OUTFILE
-```
-### Transpose
-Transpose a multiple sequence alignment, creating a JSON file with counts of each codon per site:
-```bash
-./dNdS_calculator.py transpose -i INFILE -i PREFIX
-```
-### Consensus
-Generate a consensus sequence from the transposed alignment:
-```bash
-./dNdS_calculator.py consensus -i INFILE -p PREFIX
 ```
 ### Per Sequence dN/dS
 Calculate dN/dS ratios per sequence in the alignment compared to the consensus sequence:
