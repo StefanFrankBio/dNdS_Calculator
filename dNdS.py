@@ -7,7 +7,6 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 import re
 from collections import Counter
-import os
 
 def site_counts(codon_table, outfile):
     with open(codon_table, 'r') as infile:
@@ -76,12 +75,12 @@ def per_sequence(infile, outfile, site_counts, sub_counts):
     with open(sub_counts, 'r') as infile:
         sub_counts_dict = json.load(infile)
 
-    ref_codons = re.findall(r'...', reference)
+    ref_codons = re.findall(r'...', str(reference.seq))
     N = sum(site_counts_dict[codon][0] for codon in ref_codons)
     S = sum(site_counts_dict[codon][1] for codon in ref_codons)
 
     with open(outfile, 'w') as outfile:
-        print('site', 'N', 'S', 'NS', 'SS', 'dNdS', file=outfile, sep='\t')
+        print('id', 'N', 'S', 'NS', 'SS', 'dNdS', file=outfile, sep='\t')
         for variant in variants:
             var_codons = re.findall(r'...', str(variant.seq))
             NS = 0
@@ -137,14 +136,14 @@ def parse_args():
     sub_counts_parser.add_argument('-o', '--outfile')
 
     per_sequence_parser = subparsers.add_parser('per_sequence')
-    per_sequence_parser.add_argument('-i', '--infile')
-    per_sequence_parser.add_argument('-o', '--outfile')
+    per_sequence_parser.add_argument('-i', '--infile', required=True)
+    per_sequence_parser.add_argument('-o', '--outfile', default='per_seq.tsv')
     per_sequence_parser.add_argument('-s', '--site-counts', default='resources/default_site_counts.json')
     per_sequence_parser.add_argument('-u', '--sub-counts', default='resources/default_sub_counts.json')
 
     per_site_parser = subparsers.add_parser('per_site')
-    per_site_parser.add_argument('-i', '--infile')
-    per_site_parser.add_argument('-o', '--outfile')
+    per_site_parser.add_argument('-i', '--infile', required=True)
+    per_site_parser.add_argument('-o', '--outfile', default='per_site.tsv')
     per_site_parser.add_argument('-s', '--site-counts', default='resources/default_site_counts.json')
     per_site_parser.add_argument('-u', '--sub-counts', default='resources/default_sub_counts.json')
 
