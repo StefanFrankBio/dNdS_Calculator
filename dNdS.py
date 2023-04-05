@@ -116,19 +116,13 @@ def per_site(infile, prefix, site_counts, sub_counts):
         print('site', 'N', 'S', 'NS', 'SS', 'dNdS', file=outfile, sep='\t')
         for key, value in transpose_dict.items():
             ref_codon = value[0][0]
-            N_base = site_counts_dict[ref_codon][0]
-            S_base = site_counts_dict[ref_codon][1]
-            N = 0
-            S = 0
+            N = site_counts_dict[ref_codon][0]
+            S = site_counts_dict[ref_codon][1]
             NS = 0
             SS = 0
             for v in value:
-                N += v[1]
-                S += v[1]
                 NS += sub_counts_dict[ref_codon][v[0]][0] * v[1]
                 SS += sub_counts_dict[ref_codon][v[0]][1] * v[1]
-            N *= N_base
-            S *= S_base
             if SS != 0:
                 print(key, N, S, NS, SS, (NS/N)/(SS/S), file=outfile, sep='\t')
             elif NS != 0:
