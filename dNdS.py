@@ -3,8 +3,11 @@ import argparse
 import json
 import itertools
 from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 import re
 from collections import Counter
+import os
 
 def site_counts(codon_table, outfile):
     with open(codon_table, 'r') as infile:
@@ -59,9 +62,11 @@ def transpose(infile):
     return transpose_dict
 
 def consensus(transpose_dict):
-    return ''.join([val[0][0] for val in transpose_dict.values()])
+    consensus = ''.join([val[0][0] for val in transpose_dict.values()])
+    consensus = Seq(consensus)
+    return SeqRecord(consensus, id='consensus', description='')
 
-def per_sequence(infile, prefix, site_counts, sub_counts):
+def per_sequence(infile, outfile, site_counts, sub_counts):
     reference = consensus(transpose(infile))
     variants = list(SeqIO.parse(infile, "fasta"))
 
@@ -75,7 +80,7 @@ def per_sequence(infile, prefix, site_counts, sub_counts):
     N = sum(site_counts_dict[codon][0] for codon in ref_codons)
     S = sum(site_counts_dict[codon][1] for codon in ref_codons)
 
-    with open(f'{prefix}.dNdS', 'w') as outfile:
+    with open(outfile, 'w') as outfile:
         print('site', 'N', 'S', 'NS', 'SS', 'dNdS', file=outfile, sep='\t')
         for variant in variants:
             var_codons = re.findall(r'...', str(variant.seq))
@@ -90,7 +95,7 @@ def per_sequence(infile, prefix, site_counts, sub_counts):
             except ZeroDivisionError:
                 print(variant.id, N, S, NS, SS, file=outfile, sep='\t')
 
-def per_site(infile, prefix, site_counts, sub_counts):
+def per_site(infile, outfile, site_counts, sub_counts):
     transpose_dict = transpose(infile)
 
     with open(site_counts, 'r') as infile:
@@ -99,7 +104,7 @@ def per_site(infile, prefix, site_counts, sub_counts):
     with open(sub_counts, 'r') as infile:
         sub_counts_dict = json.load(infile)
 
-    with open(f'{prefix}.dNdS', 'w') as outfile:
+    with open(outfile, 'w') as outfile:
         print('site', 'N', 'S', 'NS', 'SS', 'dNdS', file=outfile, sep='\t')
         for key, value in transpose_dict.items():
             ref_codon = value[0][0]
@@ -108,7 +113,6 @@ def per_site(infile, prefix, site_counts, sub_counts):
             NS = 0
             SS = 0
             for v in value:
-                print(site_counts_dict[ref_codon][0], site_counts_dict[ref_codon][1])
                 N += site_counts_dict[ref_codon][0]
                 S += site_counts_dict[ref_codon][1]
                 NS += sub_counts_dict[ref_codon][v[0]][0] * v[1]
@@ -132,21 +136,15 @@ def parse_args():
     sub_counts_parser.add_argument('-c', '--codon_table', default='resources/default_codon_table.json')
     sub_counts_parser.add_argument('-o', '--outfile')
 
-    transpose_parser = subparsers.add_parser('transpose')
-    transpose_parser.add_argument('-i', '--infile')
-
-    consensus_parser = subparsers.add_parser('consensus')
-    consensus_parser.add_argument('-t', '--transpose')
-
     per_sequence_parser = subparsers.add_parser('per_sequence')
     per_sequence_parser.add_argument('-i', '--infile')
-    per_sequence_parser.add_argument('-p', '--prefix')
+    per_sequence_parser.add_argument('-o', '--outfile')
     per_sequence_parser.add_argument('-s', '--site-counts', default='resources/default_site_counts.json')
     per_sequence_parser.add_argument('-u', '--sub-counts', default='resources/default_sub_counts.json')
 
     per_site_parser = subparsers.add_parser('per_site')
     per_site_parser.add_argument('-i', '--infile')
-    per_site_parser.add_argument('-p', '--prefix')
+    per_site_parser.add_argument('-o', '--outfile')
     per_site_parser.add_argument('-s', '--site-counts', default='resources/default_site_counts.json')
     per_site_parser.add_argument('-u', '--sub-counts', default='resources/default_sub_counts.json')
 
@@ -158,14 +156,10 @@ def main():
         site_counts(args.codon_table, args.outfile)
     elif args.command == 'sub_counts':
         sub_counts(args.codon_table, args.outfile)
-    elif args.command == 'transpose':
-        transpose(args.infile, args.prefix)
-    elif args.command == 'consensus':
-        consensus(args.transpose)
     elif args.command == 'per_sequence':
-        per_sequence(args.infile, args.prefix, args.site_counts, args.sub_counts)
+        per_sequence(args.infile, args.outfile, args.site_counts, args.sub_counts)
     elif args.command == 'per_site':
-        per_site(args.infile, args.prefix, args.site_counts, args.sub_counts)
+        per_site(args.infile, args.outfile, args.site_counts, args.sub_counts)
 
 if __name__ == '__main__':
     main()
