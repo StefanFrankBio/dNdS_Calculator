@@ -7,6 +7,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 import re
 from collections import Counter
+from scipy.stats import binomtest, chisquare
 
 def site_counts(codon_table, outfile):
     with open(codon_table, 'r') as infile:
@@ -16,9 +17,11 @@ def site_counts(codon_table, outfile):
     site_counts_dict = {}
     for codon in keys:
         subs = single_substitutions(codon, alphabet)
-        NS = sum([codon_dict[sub] != codon_dict[codon] for sub in subs])
-        SS = len(subs) - NS
-        site_counts_dict[codon] = (NS, SS)
+        NS = sum([codon_dict[sub] != codon_dict[codon] for sub in subs]) / len(subs)
+        SS = 1 - NS
+        NS_rounded = round(NS, 3)
+        SS_rounded = round(SS, 3)
+        site_counts_dict[codon] = (NS_rounded, SS_rounded)
     with open(outfile, 'w') as outfile:
         json.dump(site_counts_dict, outfile, indent=4)
 
@@ -104,24 +107,27 @@ def per_site(infile, outfile, site_counts, sub_counts):
         sub_counts_dict = json.load(infile)
 
     with open(outfile, 'w') as outfile:
-        print('site', 'N', 'S', 'NS', 'SS', 'dNdS', file=outfile, sep='\t')
+        print('site', 'total_subs', 'NS', 'SS', 'N', 'S', 'binom_p_value', 'chi2_p_value', file=outfile, sep='\t')
         for key, value in transpose_dict.items():
             ref_codon = value[0][0]
-            N = 0
-            S = 0
+            N = site_counts_dict[ref_codon][0]
+            S = site_counts_dict[ref_codon][1]
             NS = 0
             SS = 0
             for v in value:
-                N += site_counts_dict[ref_codon][0]
-                S += site_counts_dict[ref_codon][1]
                 NS += sub_counts_dict[ref_codon][v[0]][0] * v[1]
                 SS += sub_counts_dict[ref_codon][v[0]][1] * v[1]
-            if SS != 0:
-                print(key, N, S, NS, SS, (NS/N)/(SS/S), file=outfile, sep='\t')
-            elif NS != 0:
-                print(key, N, S, NS, SS, file=outfile, sep='\t')
-            else:
-                pass
+            
+            total_subs = NS + SS
+            NS_rounded = round(NS / total_subs, 3)
+            SS_rounded = round(1 - NS_rounded, 3)
+
+            binom_results = binomtest(NS, total_subs, N)
+            binom_p_value = round(binom_results.pvalue, 3)
+            _ , chi2_p_value = chisquare([NS_rounded, SS_rounded], [N, S])
+            chi2_p_value = round(chi2_p_value, 3)
+
+            print(key, total_subs, NS_rounded, SS_rounded, N, S, binom_p_value, chi2_p_value, file=outfile, sep='\t')
 
 def parse_args():
     parser = argparse.ArgumentParser()
