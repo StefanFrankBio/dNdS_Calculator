@@ -7,3 +7,4 @@ channels:
 
 dependencies:
   - biopython=1.81
+  - scipy=1.10.0
