@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import argparse
 import json
 import itertools
@@ -8,6 +9,11 @@ from Bio.SeqRecord import SeqRecord
 import re
 from collections import Counter
 from scipy.stats import binomtest, chisquare
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_CODON_TABLE_PATH = BASE_DIR + '/' + 'resources/default_codon_table.json'
+DEFAULT_SITE_COUNTS_PATH = BASE_DIR + '/' + 'resources/default_site_counts.json'
+DEFAULT_SUB_COUNTS_PATH = BASE_DIR + '/' + 'resources/default_sub_counts.json'
 
 def site_counts(codon_table, outfile):
     with open(codon_table, 'r') as infile:
@@ -134,24 +140,24 @@ def parse_args():
     subparsers = parser.add_subparsers(dest='command')
     
     site_counts_parser = subparsers.add_parser('site_counts')
-    site_counts_parser.add_argument('-c', '--codon_table', default='resources/default_codon_table.json')
+    site_counts_parser.add_argument('-c', '--codon_table', default=DEFAULT_CODON_TABLE_PATH)
     site_counts_parser.add_argument('-o', '--outfile')
     
     sub_counts_parser = subparsers.add_parser('sub_counts')
-    sub_counts_parser.add_argument('-c', '--codon_table', default='resources/default_codon_table.json')
+    sub_counts_parser.add_argument('-c', '--codon_table', default=DEFAULT_CODON_TABLE_PATH)
     sub_counts_parser.add_argument('-o', '--outfile')
 
     per_sequence_parser = subparsers.add_parser('per_sequence')
     per_sequence_parser.add_argument('-i', '--infile', required=True)
     per_sequence_parser.add_argument('-o', '--outfile', default='per_seq.tsv')
-    per_sequence_parser.add_argument('-s', '--site-counts', default='resources/default_site_counts.json')
-    per_sequence_parser.add_argument('-u', '--sub-counts', default='resources/default_sub_counts.json')
+    per_sequence_parser.add_argument('-s', '--site-counts', default=DEFAULT_SITE_COUNTS_PATH)
+    per_sequence_parser.add_argument('-u', '--sub-counts', default=DEFAULT_SUB_COUNTS_PATH)
 
     per_site_parser = subparsers.add_parser('per_site')
     per_site_parser.add_argument('-i', '--infile', required=True)
     per_site_parser.add_argument('-o', '--outfile', default='per_site.tsv')
-    per_site_parser.add_argument('-s', '--site-counts', default='resources/default_site_counts.json')
-    per_site_parser.add_argument('-u', '--sub-counts', default='resources/default_sub_counts.json')
+    per_site_parser.add_argument('-s', '--site-counts', default=DEFAULT_SITE_COUNTS_PATH)
+    per_site_parser.add_argument('-u', '--sub-counts', default=DEFAULT_SUB_COUNTS_PATH)
 
     return parser.parse_args()
 
