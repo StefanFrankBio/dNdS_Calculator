@@ -9,6 +9,8 @@ from Bio.SeqRecord import SeqRecord
 import re
 from collections import Counter
 from scipy.stats import binomtest, chisquare
+import numpy as np
+np.seterr(invalid='ignore')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_CODON_TABLE_PATH = BASE_DIR + '/' + 'resources/default_codon_table.json'
@@ -105,7 +107,6 @@ def per_sequence(infile, outfile, site_counts, sub_counts):
 
 def per_site(infile, outfile, site_counts, sub_counts):
     transpose_dict = transpose(infile)
-
     with open(site_counts, 'r') as infile:
         site_counts_dict = json.load(infile)
 
@@ -125,13 +126,19 @@ def per_site(infile, outfile, site_counts, sub_counts):
                 SS += sub_counts_dict[ref_codon][v[0]][1] * v[1]
             
             total_subs = NS + SS
-            NS_rounded = round(NS / total_subs, 3)
-            SS_rounded = round(1 - NS_rounded, 3)
-
-            binom_results = binomtest(NS, total_subs, N)
-            binom_p_value = round(binom_results.pvalue, 3)
-            _ , chi2_p_value = chisquare([NS_rounded, SS_rounded], [N, S])
-            chi2_p_value = round(chi2_p_value, 3)
+            
+            if total_subs == 0:
+                NS_rounded = 0
+                SS_rounded = 0
+                binom_p_value = -1
+                chi2_p_value = -1
+            else:
+                NS_rounded = round(NS / total_subs, 3)
+                SS_rounded = round(1 - NS_rounded, 3)
+                binom_results = binomtest(NS, total_subs, N)
+                binom_p_value = round(binom_results.pvalue, 3)
+                _ , chi2_p_value = chisquare([NS_rounded, SS_rounded], [N, S])
+                chi2_p_value = round(chi2_p_value, 3)
 
             print(key, total_subs, NS_rounded, SS_rounded, N, S, binom_p_value, chi2_p_value, file=outfile, sep='\t')
 
