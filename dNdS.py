@@ -130,8 +130,8 @@ def per_site(infile, outfile, site_counts, sub_counts):
             if total_subs == 0:
                 NS_rounded = 0
                 SS_rounded = 0
-                binom_p_value = -1
-                chi2_p_value = -1
+                binom_p_value = 1
+                chi2_p_value = 1
             else:
                 NS_rounded = round(NS / total_subs, 3)
                 SS_rounded = round(1 - NS_rounded, 3)
