@@ -66,18 +66,26 @@ def transpose(infile):
     transpose_dict = {}
     for i, site in enumerate(codons_by_site):
         count = Counter(site)
-        del count['---']
+        count['---'] = 0.1
         sorted_counts = sorted(count.items(), key=lambda x: (-x[1], x[0]))
         transpose_dict[i] = sorted_counts
     return transpose_dict
 
-def consensus(transpose_dict):
+def consensus(transpose_dict, outfile=False):
     consensus = ''.join([val[0][0] for val in transpose_dict.values()])
     consensus = Seq(consensus)
-    return SeqRecord(consensus, id='consensus', description='')
+    consensus = SeqRecord(consensus, id='consensus', description='')
+    if outfile:
+        with open("output.fasta", "w") as output_file:
+            SeqIO.write(consensus, outfile, "fasta")
+    else:
+        return consensus
 
-def per_sequence(infile, outfile, site_counts, sub_counts):
-    reference = consensus(transpose(infile))
+def per_sequence(infile, outfile, site_counts, sub_counts, ref_file=False):
+    if ref_file:
+        reference = next(SeqIO.parse(ref_file, "fasta"))
+    else:
+        reference = consensus(transpose(infile))
     variants = list(SeqIO.parse(infile, "fasta"))
 
     with open(site_counts, 'r') as infile:
@@ -159,12 +167,17 @@ def parse_args():
     per_sequence_parser.add_argument('-o', '--outfile', default='per_seq.tsv')
     per_sequence_parser.add_argument('-s', '--site-counts', default=DEFAULT_SITE_COUNTS_PATH)
     per_sequence_parser.add_argument('-u', '--sub-counts', default=DEFAULT_SUB_COUNTS_PATH)
+    per_sequence_parser.add_argument('-r', '--reference')
 
     per_site_parser = subparsers.add_parser('per_site')
     per_site_parser.add_argument('-i', '--infile', required=True)
     per_site_parser.add_argument('-o', '--outfile', default='per_site.tsv')
     per_site_parser.add_argument('-s', '--site-counts', default=DEFAULT_SITE_COUNTS_PATH)
     per_site_parser.add_argument('-u', '--sub-counts', default=DEFAULT_SUB_COUNTS_PATH)
+
+    consensus_parser = subparsers.add_parser('consensus')
+    consensus_parser.add_argument('-i', '--infile', required=True)
+    consensus_parser.add_argument('-o', '--outfile')
 
     return parser.parse_args()
 
@@ -178,6 +191,8 @@ def main():
         per_sequence(args.infile, args.outfile, args.site_counts, args.sub_counts)
     elif args.command == 'per_site':
         per_site(args.infile, args.outfile, args.site_counts, args.sub_counts)
+    elif args.command == 'consensus':
+        consensus(transpose(args.infile), args.outfile)
 
 if __name__ == '__main__':
     main()
